@@ -2,39 +2,67 @@ package db
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 	"os"
 
-	_ "github.com/mattn/go-sqlite3"
+	"github.com/jmoiron/sqlx"
+	_ "github.com/lib/pq"
 )
 
-var DB *sql.DB
-var OwnerDB *sql.DB
+var DB *DBConn
+var OwnerDB *DBConn
+
+// DBConn is a small wrapper around sqlx.DB that rebids `?` placeholders to
+// Postgres-style `$1` placeholders automatically before executing queries.
+type DBConn struct{
+	db *sqlx.DB
+}
+
+func (c *DBConn) Query(query string, args ...interface{}) (*sql.Rows, error) {
+	q := sqlx.Rebind(sqlx.DOLLAR, query)
+	return c.db.Query(q, args...)
+}
+
+func (c *DBConn) Exec(query string, args ...interface{}) (sql.Result, error) {
+	q := sqlx.Rebind(sqlx.DOLLAR, query)
+	return c.db.Exec(q, args...)
+}
+
+func (c *DBConn) QueryRow(query string, args ...interface{}) *sql.Row {
+	q := sqlx.Rebind(sqlx.DOLLAR, query)
+	return c.db.QueryRow(q, args...)
+}
 
 func Init() {
 	var err error
 
-	dbPath := os.Getenv("DB_PATH")
-	if dbPath == "" {
-		dbPath = "."
+	databaseURL := os.Getenv("DATABASE_URL")
+	ownerDatabaseURL := os.Getenv("OWNER_DATABASE_URL")
+	if databaseURL == "" {
+		log.Fatal("DATABASE_URL must be set")
+	}
+	if ownerDatabaseURL == "" {
+		ownerDatabaseURL = databaseURL
 	}
 
-	// Open shared database for vendors and accountants
-	DB, err = sql.Open("sqlite3", dbPath+"/lejasmart.db")
+	sqlDB, err := sql.Open("postgres", databaseURL)
 	if err != nil {
 		log.Fatal("Could not open main database:", err)
 	}
-	if err = DB.Ping(); err != nil {
+	if err = sqlDB.Ping(); err != nil {
 		log.Fatal("Could not connect to main database:", err)
 	}
+	DB = &DBConn{db: sqlx.NewDb(sqlDB, "postgres")}
 
-	OwnerDB, err = sql.Open("sqlite3", dbPath+"/lejasmart_owner.db")
+	sqlOwnerDB, err := sql.Open("postgres", ownerDatabaseURL)
 	if err != nil {
 		log.Fatal("Could not open owner database:", err)
 	}
-	if err = OwnerDB.Ping(); err != nil {
+	if err = sqlOwnerDB.Ping(); err != nil {
 		log.Fatal("Could not connect to owner database:", err)
 	}
+	OwnerDB = &DBConn{db: sqlx.NewDb(sqlOwnerDB, "postgres")}
 
 	initDatabase(DB)
 	initDatabase(OwnerDB)
@@ -42,7 +70,7 @@ func Init() {
 	log.Println("Both databases connected and ready")
 }
 
-func initDatabase(conn *sql.DB) {
+func initDatabase(conn *DBConn) {
 	queries := []string{
 
 		// Shops Table
@@ -50,7 +78,7 @@ func initDatabase(conn *sql.DB) {
 		id TEXT PRIMARY KEY,
 		name TEXT NOT NULL,
 		code TEXT UNIQUE NOT NULL,
-		created_at TEXT DEFAULT (datetime('now'))
+		created_at TEXT DEFAULT now()::text
 	);`,
 
 		// Vendors Table
@@ -60,7 +88,7 @@ func initDatabase(conn *sql.DB) {
 		email TEXT UNIQUE NOT NULL,
 		role TEXT NOT NULL DEFAULT 'vendor',
 		shop_id TEXT NOT NULL,
-		created_at TEXT DEFAULT (datetime('now')),
+		created_at TEXT DEFAULT now()::text,
 		FOREIGN KEY (shop_id) REFERENCES shops(id)
 	);`,
 
@@ -72,7 +100,7 @@ func initDatabase(conn *sql.DB) {
 	password TEXT NOT NULL,
 	role TEXT NOT NULL DEFAULT 'vendor',
 	shop_id TEXT NOT NULL,
-	created_at TEXT DEFAULT (datetime('now')),
+	created_at TEXT DEFAULT now()::text,
 	FOREIGN KEY (shop_id) REFERENCES shops(id)
 	);`,
 
@@ -86,7 +114,7 @@ func initDatabase(conn *sql.DB) {
 		category TEXT,
 		supplier_name TEXT,
 		notes TEXT,
-		created_at TEXT DEFAULT (datetime('now')),
+		created_at TEXT DEFAULT now()::text,
 		FOREIGN KEY (vendor_id) REFERENCES users(id),
 		FOREIGN KEY (shop_id) REFERENCES shops(id)
 	);`,
@@ -104,7 +132,7 @@ func initDatabase(conn *sql.DB) {
 		restocked_at TEXT,
 		quantity REAL NOT NULL,
 		unit TEXT,
-		updated_at TEXT DEFAULT (datetime('now')),
+		updated_at TEXT DEFAULT now()::text,
 		FOREIGN KEY (vendor_id) REFERENCES users(id),
 		FOREIGN KEY (shop_id) REFERENCES shops(id)
 	);`,
@@ -117,7 +145,7 @@ func initDatabase(conn *sql.DB) {
 		amount REAL NOT NULL,
 		date TEXT NOT NULL,
 		notes TEXT,
-		created_at TEXT DEFAULT (datetime('now')),
+		created_at TEXT DEFAULT now()::text,
 		FOREIGN KEY (vendor_id) REFERENCES users(id),
 		FOREIGN KEY (shop_id) REFERENCES shops(id)
 	);`,
@@ -133,15 +161,14 @@ func initDatabase(conn *sql.DB) {
 		unit_cost REAL,
 		date TEXT NOT NULL,
 		notes TEXT,
-		created_at TEXT DEFAULT (datetime('now')),
+		created_at TEXT DEFAULT now()::text,
 		FOREIGN KEY (vendor_id) REFERENCES users(id),
 		FOREIGN KEY (shop_id) REFERENCES shops(id)
 	);`,
 	}
 
 	for _, q := range queries {
-		_, err := conn.Exec(q)
-		if err != nil {
+		if _, err := conn.Exec(q); err != nil {
 			log.Fatal("could not create table:", err)
 		}
 	}
@@ -180,40 +207,26 @@ func initDatabase(conn *sql.DB) {
 	}
 }
 
-func ensureColumn(conn *sql.DB, table, column, definition string) error {
-	rows, err := conn.Query(`PRAGMA table_info(` + table + `)`)
-	if err != nil {
-		return err
+func ensureColumn(conn *DBConn, table, column, definition string) error {
+	// Information schema check for Postgres
+	var colName string
+	q := `SELECT column_name FROM information_schema.columns WHERE table_name = $1 AND column_name = $2`
+	if err := conn.QueryRow(q, table, column).Scan(&colName); err == nil {
+		return nil
 	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var cid int
-		var colName string
-		var colType string
-		var notnull int
-		var dflt sql.NullString
-		var pk int
-		if err := rows.Scan(&cid, &colName, &colType, &notnull, &dflt, &pk); err != nil {
-			return err
-		}
-		if colName == column {
-			return nil
-		}
-	}
-
-	_, err = conn.Exec(`ALTER TABLE ` + table + ` ADD COLUMN ` + column + ` ` + definition)
+	// If not exists, add the column
+	_, err := conn.Exec(fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s", table, column, definition))
 	return err
 }
 
-func DBForRole(role string) *sql.DB {
+func DBForRole(role string) *DBConn {
 	if role == "owner" {
 		return OwnerDB
 	}
 	return DB
 }
 
-func DBForEmail(email string) *sql.DB {
+func DBForEmail(email string) *DBConn {
 	var u struct{ ID string }
 	if err := OwnerDB.QueryRow(`SELECT id FROM users WHERE email = ?`, email).Scan(&u.ID); err == nil {
 		return OwnerDB

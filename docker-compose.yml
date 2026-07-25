@@ -4,7 +4,23 @@ services:
     build: .
     ports:
       - "8080:8080"
-    volumes:
-      - ./data/lejasmart.db:/app/lejasmart.db
-      - ./data/lejasmart_owner.db:/app/lejasmart_owner.db
+    environment:
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/lejasmart?sslmode=disable
+      - OWNER_DATABASE_URL=postgres://postgres:postgres@postgres:5432/lejasmart_owner?sslmode=disable
+    depends_on:
+      - postgres
     restart: unless-stopped
+
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: lejasmart
+    volumes:
+      - ./db/init:/docker-entrypoint-initdb.d
+      - postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  postgres-data:

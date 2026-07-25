@@ -110,7 +110,7 @@ func GetShopCodeByID(shopID string) (string, error) {
 	return code, err
 }
 
-func getShopIDByCode(conn *sql.DB, code string) (string, error) {
+func getShopIDByCode(conn *DBConn, code string) (string, error) {
 	var shopID string
 	err := conn.QueryRow(`SELECT id FROM shops WHERE code = ?`, code).Scan(&shopID)
 	if err != nil {
@@ -122,7 +122,7 @@ func getShopIDByCode(conn *sql.DB, code string) (string, error) {
 	return shopID, nil
 }
 
-func createShop(conn *sql.DB, name string) (string, string, error) {
+func createShop(conn *DBConn, name string) (string, string, error) {
 	shopCode, err := generateShopCode(conn)
 	if err != nil {
 		return "", "", err
@@ -139,7 +139,7 @@ func createShop(conn *sql.DB, name string) (string, string, error) {
 	return shopID, shopCode, nil
 }
 
-func generateShopCode(conn *sql.DB) (string, error) {
+func generateShopCode(conn *DBConn) (string, error) {
 	for i := 0; i < 10; i++ {
 		code := strings.ToUpper(strings.ReplaceAll(uuid.New().String()[:8], "-", ""))
 		if _, err := getShopIDByCode(conn, code); err != nil {
