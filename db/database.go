@@ -15,7 +15,7 @@ var OwnerDB *DBConn
 
 // DBConn is a small wrapper around sqlx.DB that rebids `?` placeholders to
 // Postgres-style `$1` placeholders automatically before executing queries.
-type DBConn struct{
+type DBConn struct {
 	db *sqlx.DB
 }
 
