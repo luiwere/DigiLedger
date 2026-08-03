@@ -57,13 +57,43 @@ The Compose setup uses `DATABASE_URL` and `OWNER_DATABASE_URL` to connect to two
 
 On Render, use a managed Postgres instance and set these environment variables in your service:
 
-- `DATABASE_URL`
-- `OWNER_DATABASE_URL` (optional; if unset, the app uses `DATABASE_URL`)
-- `PORT` (Render sets this automatically, but you can also set `8080`)
+- ## Environment Variables
 
-If you only have one managed database available, set both env vars to the same connection URL.
+LejaSmart uses environment variables for configuration. Create a `.env` file in the project root for local development.
 
-To create the secondary database if needed, use the SQL script in `db/create_databases.sql`.
+### Local Development (`.env`)
+
+```dotenv
+PORT=8080
+DATABASE_URL=postgresql://username:password@hostname/lejasmart_postgres
+OWNER_DATABASE_URL=postgresql://username:password@hostname/lejasmart_postgres
+```
+
+### Production (Render)
+
+Add these in your Render Web Service → **Environment** tab:
+
+| Key | Description |
+|---|---|
+| `PORT` | Port the server listens on (Render sets this automatically) |
+| `DATABASE_URL` | Internal PostgreSQL URL for vendors and accountants database |
+| `OWNER_DATABASE_URL` | Internal PostgreSQL URL for owner database |
+
+> **Note:** For Render deployment, use the **Internal Database URL** from your PostgreSQL service for `DATABASE_URL` and `OWNER_DATABASE_URL` — it is faster since both services run on Render's network. Use the **External Database URL** only in your local `.env` file.
+
+### Getting your database URLs from Render
+
+1. Go to your Render dashboard
+2. Click your **PostgreSQL service**
+3. Scroll to the **Connections** section
+4. Copy **Internal Database URL** → use for Render environment variables
+5. Copy **External Database URL** → use in your local `.env` file
+
+### Security
+
+- Never commit your `.env` file to GitHub — it contains your database password
+- Confirm `.env` is listed in your `.gitignore`
+- Reset your database password on Render after sharing it anywhere — go to PostgreSQL service → **Settings** → **Reset Password**
 
 ## Postgres setup helper
 
