@@ -8,6 +8,9 @@
 
 LejaSmart helps local vendors and small business owners replace paper ledgers with a simple web app for tracking expenses, inventory, sales, and profit & loss. It supports three roles (vendor, accountant, owner) and uses PostgreSQL for persistence.
 
+## Live Demo
+[digiledger-qiey.onrender.com](https://digiledger-qiey.onrender.com)
+
 ## Project Structure (high level)
 
 ```
