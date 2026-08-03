@@ -3,3 +3,6 @@
 *.db-smh
 *.db-wal
 *.gomodcache
+
+# env
+*.env
