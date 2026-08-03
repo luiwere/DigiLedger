@@ -1,0 +1,66 @@
+/* Green & white theme for Leja Smart dashboard page */
+:root{
+  --green:#2f9e44;
+  --green-dark:#237a31;
+  --muted:#6b7280;
+  --bg:#ffffff;
+}
+*{box-sizing:border-box}
+body{font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; margin:0; color:#0f172a; background:var(--bg);}
+.container{max-width:1100px;margin:0 auto;padding:24px}
+.site-header{background:linear-gradient(180deg, rgba(47,158,68,0.08), transparent);border-bottom:1px solid rgba(0,0,0,0.04)}
+.site-header .container{display:flex;align-items:center;justify-content:space-between}
+.brand{font-weight:700;color:var(--green);font-size:1.25rem}
+.actions .btn{margin-left:10px}
+.btn{background:var(--green);color:#fff;padding:8px 14px;border-radius:8px;text-decoration:none;display:inline-block}
+.btn.outline{background:transparent;color:var(--green);border:2px solid var(--green)}
+.btn.ghost{background:transparent;color:var(--green);border:1px solid rgba(0,0,0,0.06)}
+.btn.large{padding:12px 20px;font-weight:600}
+
+.hero{padding:60px 0}
+.hero-inner{display:flex;gap:28px;align-items:center}
+.hero-copy{flex:1}
+.title{font-size:2.2rem;margin:0 0 12px}
+.subtitle{color:var(--muted);margin:0 0 18px}
+.money-animation{position:relative;display:inline-flex;align-items:center;gap:10px;background:rgba(47,158,68,0.08);border:1px solid rgba(47,158,68,0.18);border-radius:999px;padding:12px 16px;margin-bottom:20px;overflow:hidden}
+.money-text{font-size:0.95rem;color:var(--green-dark);font-weight:600}
+.money-burst{font-size:1.4rem;animation:pop-burst 1.4s ease-in-out infinite}
+.money-particle{position:absolute;top:50%;left:50%;pointer-events:none;opacity:0;transform:translate(-50%, -50%) scale(0.9);font-size:1rem;animation:float-money 1.6s ease-out forwards}
+.hero-media{width:320px}
+.card.stats{background:#fff;border-radius:12px;padding:18px;box-shadow:0 6px 20px rgba(15,23,42,0.06);display:flex;flex-direction:column;gap:12px}
+.stat{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px dashed rgba(0,0,0,0.04)}
+.stat:last-child{border-bottom:none}
+.num{font-weight:700;color:var(--green);font-size:1.4rem}
+.label{color:var(--muted);font-size:0.9rem}
+
+.features{padding:40px 0}
+.features h2{margin-top:0}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;margin-top:16px}
+.feature{background:#fff;padding:22px 18px 18px;border-radius:10px;box-shadow:0 6px 18px rgba(15,23,42,0.04);position:relative}
+.feature-icon{width:56px;height:56px;border-radius:16px;background:rgba(47,158,68,0.08);display:flex;align-items:center;justify-content:center;margin-bottom:16px;color:var(--green-dark)}
+.feature h3{margin:0 0 8px;color:var(--green-dark)}
+
+.contact{padding:30px 0}
+.contact-list{list-style:none;padding:0;margin:8px 0;color:var(--muted)}
+
+.site-footer{padding:18px 0;border-top:1px solid rgba(0,0,0,0.04);margin-top:40px;color:var(--muted);font-size:0.95rem}
+
+@media (max-width:800px){
+  .hero-inner{flex-direction:column}
+  .hero-media{width:100%}
+}
+
+@keyframes pop-burst{
+  0%,100%{transform:translateY(0) scale(1)}
+  50%{transform:translateY(-4px) scale(1.2)}
+}
+
+@keyframes float-money{
+  0%{opacity:1;transform:translate(-50%, -50%) scale(0.9)}
+  80%{opacity:0.8;transform:translate(calc(-50% + var(--x)), calc(-50% - 120px)) scale(1.1)}
+  100%{opacity:0;transform:translate(calc(-50% + var(--x)), calc(-50% - 160px)) scale(1.2)}
+}
+
+/* simple animate helpers */
+.fade-in{opacity:0;transform:translateY(8px);transition:opacity .6s ease, transform .6s ease}
+.fade-in.visible{opacity:1;transform:none}
